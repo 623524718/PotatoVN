@@ -80,6 +80,14 @@ public partial class GalgameCollectionService : IGalgameCollectionService
 
     public async Task StartAsync()
     {
+        // 以下代码用于临时修复dev版中的问题，发布版中应该删除
+        // foreach (var gal in _galgames.Where(g => g.Sources.Count == 0))
+        // {
+        //     var targetSrc = _galSrcService.GetGalgameSource(GalgameSourceType.LocalFolder,
+        //         Directory.GetParent(gal.Path)!.FullName);
+        //     if (targetSrc is null) continue;
+        //     _galSrcService.MoveInNoOperate(targetSrc, gal, gal.Path);
+        // }
         await Task.CompletedTask;
     }
 
@@ -313,7 +321,13 @@ public partial class GalgameCollectionService : IGalgameCollectionService
         }
         galgame.ImageUrl = tmp.ImageUrl;
         galgame.Rating.Value = tmp.Rating.Value;
-        galgame.Tags.Value = tmp.Tags.Value;
+        if (!galgame.Tags.IsLock && tmp.Tags.Value?.Count > 0) // Tags不能直接赋值，直接替换容器会抛出奇怪的绑定异常
+        {
+            galgame.Tags.Value ??= new ObservableCollection<string>(); //不应该发生
+            galgame.Tags.Value.Clear();
+            foreach (var tag in tmp.Tags.Value)
+                galgame.Tags.Value.Add(tag);
+        }
         galgame.Characters = tmp.Characters;
         galgame.ImagePath.Value = await DownloadHelper.DownloadAndSaveImageAsync(galgame.ImageUrl) ?? Galgame.DefaultImagePath;
         galgame.ReleaseDate = tmp.ReleaseDate.Value;
